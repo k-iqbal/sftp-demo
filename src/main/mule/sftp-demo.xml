@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<sftp:config name="SFTP_Config" doc:name="SFTP Config" doc:id="8f052fde-b790-42d4-92c9-87116268c3ba" >
+		<sftp:connection workingDir="/UAT" host="192.168.4.23" username="tester" password="password" />
+	</sftp:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="adc7cf98-1b42-4461-bf26-4a0df64aaa1e" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="sftp-demoFlow" doc:id="2bed84e1-303f-4ecf-a60a-c23b30807039" initialState="stopped">
+		<sftp:listener doc:name="On New or Updated File" doc:id="4d159bcb-7afd-42b7-a5ea-c454e436152d" config-ref="SFTP_Config" directory="input" autoDelete="true" moveToDirectory="archieve" renameTo='#[splitBy(attributes.fileName, ".")[0] ++ "-" ++ now() as DateTime as String {format: "uuuu-MM-dd-KK-mm-ss-a"} ++ "." ++ splitBy(attributes.fileName,".")[1]]'>
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</sftp:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="8693b9f0-8c30-4b29-ae60-38af856fef74" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+	</flow>
+	<flow name="sftp-demoFlow1" doc:id="1ef089bb-770c-4966-86f3-a9f167f3956f" >
+		<http:listener doc:name="Listener" doc:id="29c07f3b-e298-4fe5-a891-ff19933be2d1" config-ref="HTTP_Listener_config" path="/list"/>
+		<sftp:list doc:name="List" doc:id="86a9eaef-105b-4e13-9c23-24a656e1764a" config-ref="SFTP_Config" directoryPath="/UAT/output"/>
+		<logger level="INFO" doc:name="Logger" doc:id="af6a3b97-e756-4558-a366-4668f82f74fb" message="#[payload]"/>
+	</flow>
+	<flow name="sftp-demoFlow2" doc:id="5c8ae2bb-dbac-46bb-aede-9a10624cb7b6" >
+		<http:listener doc:name="Listener" doc:id="9efe7135-b050-44b6-8521-da0ecbfe911d" config-ref="HTTP_Listener_config" path="/write2file"/>
+		<sftp:read doc:name="Read" doc:id="57d4cd82-66d1-4836-82c7-f8e945cd3795" config-ref="SFTP_Config" path="input2/abc.csv"/>
+		<logger level="INFO" doc:name="Logger" doc:id="5f57e858-0d06-4b09-b546-147b80ca0b57" message="#[payload]"/>
+		<sftp:write doc:name="Write" doc:id="932026ee-b206-47cb-a0ff-23bb6643bb85" config-ref="SFTP_Config" path="output/myfile.csv"/>
+		<logger level="INFO" doc:name="Logger" doc:id="e05076b8-2256-4812-b015-f867d21eee28" message="File writing process finished."/>
+	</flow>
+</mule>
